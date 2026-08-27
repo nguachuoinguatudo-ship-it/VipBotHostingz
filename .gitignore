@@ -1,0 +1,10 @@
+.env
+data/
+vendor/
+__pycache__/
+*.py[cod]
+*.db
+*.db-*
+*.zip
+.venv/
+venv/
