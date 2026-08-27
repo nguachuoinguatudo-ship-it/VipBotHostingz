@@ -627,14 +627,25 @@ async def on_document(message: Message, state: FSMContext, ctx: AppContext) -> N
     if doc is None:
         return
     loading = await message.answer(loading_message("Menyiapkan upload", 1, 6))
-    file = await message.bot.get_file(doc.file_id)
-    await loading.edit_text(loading_message("Mengunduh file", 2, 6))
-    buffer = io.BytesIO()
-    await message.bot.download_file(file.file_path, destination=buffer)
-    payload = buffer.getvalue()
+    try:
+        await asyncio.sleep(0.2)
+        file = await message.bot.get_file(doc.file_id)
+        await loading.edit_text(loading_message("Mengunduh file", 2, 6))
+        await asyncio.sleep(0.2)
+        buffer = io.BytesIO()
+        await message.bot.download_file(file.file_path, destination=buffer)
+        payload = buffer.getvalue()
+    except Exception as exc:
+        await loading.edit_text(loading_message("Upload selesai", 6, 6))
+        await message.answer(
+            f"× <b>UPLOAD GAGAL</b>\n\n<pre>{escape(str(exc)[-3500:])}</pre>",
+        )
+        await state.clear()
+        return
 
     try:
         await loading.edit_text(loading_message("Mengekstrak dan menyimpan", 3, 6))
+        await asyncio.sleep(0.2)
         bot_id, source_root, entry_point, kind = await ctx.hosting.save_uploaded_bot(user.id, doc.file_name or "bot.py", payload)
         await loading.edit_text(loading_message("Menginstall requirements", 4, 6))
         await ctx.hosting.start_bot(bot_id, source_root, entry_point)
@@ -649,6 +660,7 @@ async def on_document(message: Message, state: FSMContext, ctx: AppContext) -> N
             reply_markup=back_keyboard(),
         )
     except Exception as exc:
+        await loading.edit_text(loading_message("Upload selesai", 6, 6))
         await message.answer(
             f"× <b>UPLOAD GAGAL</b>\n\n<pre>{escape(str(exc)[-3500:])}</pre>\n\n"
             "Buka menu bot lalu cek log untuk detailnya.",

@@ -111,6 +111,7 @@ def bot_actions_keyboard(bot_id: int, is_running: bool, is_owner: bool) -> Inlin
     builder.button(text="≡ Log", callback_data=f"bot:{bot_id}:log")
     if is_owner:
         builder.button(text="✧ Owner", callback_data="menu:owner")
+    builder.button(text="‹ Kembali", callback_data="menu:home")
     builder.adjust(2, 2, 2)
     return builder.as_markup()
 
@@ -121,5 +122,6 @@ def bots_list_keyboard(bot_ids: list[tuple[int, str]], is_owner: bool) -> Inline
         builder.button(text=label, callback_data=f"bot:{bot_id}:open")
     if is_owner:
         builder.button(text="✧ Owner", callback_data="menu:owner")
+    builder.button(text="‹ Kembali", callback_data="menu:home")
     builder.adjust(1)
     return builder.as_markup()
