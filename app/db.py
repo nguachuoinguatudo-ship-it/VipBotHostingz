@@ -326,6 +326,17 @@ class Database:
         )
         await self.conn.commit()
 
+    async def reset_data(self) -> None:
+        await self.conn.executescript(
+            """
+            DELETE FROM users;
+            DELETE FROM user_actions;
+            DELETE FROM redeem_codes;
+            DELETE FROM bots;
+            """
+        )
+        await self.conn.commit()
+
     async def add_required_chat(self, chat_id: str, title: str, invite_link: str, kind: str) -> None:
         await self.conn.execute(
             """

@@ -36,6 +36,7 @@ from .texts import access_message, copy_code, format_money, format_seconds, help
 
 
 router = Router()
+START_THUMBNAIL = "https://foxxy-free-imghosting.vercel.app/foxxy-ltjpcgm8.jpg"
 
 
 class AppContext:
@@ -182,7 +183,11 @@ async def safe_send_home(message: Message, ctx: AppContext) -> None:
         ctx.settings.owner_names,
         plan_expiry_text(record),
     )
-    await message.answer(text, reply_markup=reply_main_keyboard(is_owner(ctx.settings, user.id)))
+    markup = reply_main_keyboard(is_owner(ctx.settings, user.id))
+    try:
+        await message.answer_photo(START_THUMBNAIL, caption=text, reply_markup=markup)
+    except Exception:
+        await message.answer(text, reply_markup=markup)
 
 
 @router.message(Command("start"))
@@ -517,6 +522,14 @@ async def owner_action(callback: CallbackQuery, state: FSMContext, ctx: AppConte
         await ctx.hosting.stop_all()
         await callback.message.edit_text("Semua bot aktif sudah dihentikan.", reply_markup=owner_keyboard())
         await callback.answer("Selesai")
+        return
+    if action == "resetdata":
+        bots = await ctx.db.list_all_bots()
+        for bot in bots:
+            await ctx.hosting.delete_bot(int(bot["id"]))
+        await ctx.db.reset_data()
+        await callback.message.edit_text("⟳ <b>DATA BERHASIL DIRESET</b>\n\nUser, bot, redeem, dan sesi sudah dibersihkan.", reply_markup=owner_keyboard())
+        await callback.answer("Data direset")
         return
     await callback.message.edit_text(prompts.get(action, "Kirim data sesuai kebutuhan."), reply_markup=back_keyboard())
     await callback.answer()

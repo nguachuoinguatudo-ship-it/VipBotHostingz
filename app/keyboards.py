@@ -74,7 +74,6 @@ def buy_plan_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="◆ Pro +5", callback_data="buy:Pro:5")
     builder.button(text="✧ VIP +1", callback_data="buy:VIP:1")
     builder.button(text="✧ VIP +5", callback_data="buy:VIP:5")
-    builder.button(text="‹ Kembali", callback_data="menu:home")
     builder.adjust(2, 2, 1)
     return builder.as_markup()
 
@@ -91,9 +90,9 @@ def owner_keyboard() -> InlineKeyboardMarkup:
         ("◆ Lihat User", "owner:listusers"),
         ("◌ Lihat Bot", "owner:listbots"),
         ("⌫ Hapus Semua Bot", "owner:stopall"),
+        ("⟳ Reset Data", "owner:resetdata"),
         ("+ Add To Grup", "owner:addgroup"),
         ("⌁ Kelola Join", "owner:joinmanage"),
-        ("Kembali", "menu:home"),
     ]
     for text, callback in buttons:
         builder.button(text=text, callback_data=callback)
@@ -111,7 +110,6 @@ def bot_actions_keyboard(bot_id: int, is_running: bool, is_owner: bool) -> Inlin
     builder.button(text="≡ Log", callback_data=f"bot:{bot_id}:log")
     if is_owner:
         builder.button(text="✧ Owner", callback_data="menu:owner")
-    builder.button(text="‹ Kembali", callback_data="menu:home")
     builder.adjust(2, 2, 2)
     return builder.as_markup()
 
@@ -122,6 +120,5 @@ def bots_list_keyboard(bot_ids: list[tuple[int, str]], is_owner: bool) -> Inline
         builder.button(text=label, callback_data=f"bot:{bot_id}:open")
     if is_owner:
         builder.button(text="✧ Owner", callback_data="menu:owner")
-    builder.button(text="‹ Kembali", callback_data="menu:home")
     builder.adjust(1)
     return builder.as_markup()
