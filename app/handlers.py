@@ -620,7 +620,7 @@ async def reply_menu_priority(message: Message, state: FSMContext, ctx: AppConte
     if action == "menu:owner" and not is_owner(ctx.settings, message.from_user.id):
         await message.answer("× Akses ditolak.")
         return
-    placeholder = await message.answer("◌ membuka menu...")
+    placeholder = await message.answer(loading_message("Menyiapkan", 1, 3))
     callback = ReplyCallback(placeholder, message.from_user, action)
     handlers = {
         "menu:upload": menu_upload,
