@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from html import escape
+from html import escape, unescape
 from datetime import timedelta
+import re
 
 
 SMALL_CAPS = str.maketrans({
@@ -16,6 +17,11 @@ BOLD_SANS = str.maketrans(
     "𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇",
 )
 
+ITALIC_SANS = str.maketrans(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+    "𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻",
+)
+
 
 def small_caps(value: str) -> str:
     return value.translate(SMALL_CAPS)
@@ -23,6 +29,26 @@ def small_caps(value: str) -> str:
 
 def bold_sans(value: str) -> str:
     return value.translate(BOLD_SANS)
+
+
+def stylize_html(value: str) -> str:
+    chunks = re.split(r"(<[^>]+>)", value)
+    in_code = False
+    styled: list[str] = []
+    for chunk in chunks:
+        if chunk.startswith("<") and chunk.endswith(">"):
+            styled.append(chunk)
+            if chunk.lower().startswith(("<code", "<pre")):
+                in_code = True
+            elif chunk.lower().startswith(("</code", "</pre")):
+                in_code = False
+        else:
+            styled.append(chunk if in_code else chunk.translate(ITALIC_SANS))
+    return "".join(styled)
+
+
+def unicode_text(value: str) -> str:
+    return unescape(re.sub(r"<[^>]+>", "", stylize_html(value)))
 
 
 def title(icon: str, value: str) -> str:
@@ -48,6 +74,14 @@ def format_seconds(seconds: int) -> str:
 
 def format_money(amount: int) -> str:
     return f"{amount:,}".replace(",", ".")
+
+
+def copy_code(value: str) -> str:
+    return f"<code>{escape(value)}</code>"
+
+
+def quote_text(value: str) -> str:
+    return f"<blockquote>{escape(value)}</blockquote>"
 
 
 def progress_bar(current: int, total: int, width: int = 12) -> str:
@@ -98,5 +132,6 @@ def help_message() -> str:
         "◇ <b>Buy Plan</b> — beli slot hosting sesuai kebutuhan\n"
         "⌁ <b>Referral</b> — bonus <b>100$</b> tiap user baru\n"
         "▣ <b>Redeem</b> — tukarkan kode saldo\n\n"
-        "└ Pastikan file punya entry point Python yang valid."
+        "└ Pastikan file punya entry point Python yang valid.\n"
+        "└ Ketuk teks dalam kotak kode untuk menyalin."
     )

@@ -31,7 +31,7 @@ from .keyboards import (
     main_keyboard,
     owner_keyboard,
 )
-from .texts import access_message, format_money, format_seconds, help_message, loading_message, start_message, title
+from .texts import access_message, copy_code, format_money, format_seconds, help_message, loading_message, quote_text, start_message, title
 
 
 router = Router()
@@ -321,7 +321,7 @@ async def menu_referral(callback: CallbackQuery, ctx: AppContext) -> None:
     link = ctx.referral_link(callback.from_user.id)
     text = (
         "⌁ <b>REFERRAL PROGRAM</b>\n\n"
-        f"↗ Link kamu:\n<code>{link}</code>\n\n"
+        f"↗ Link kamu:\n{copy_code(link)}\n\n"
         "$ Setiap user baru dari link kamu memberi bonus <b>100$</b>."
     )
     await callback.message.edit_text(text, reply_markup=back_keyboard())
@@ -394,7 +394,7 @@ async def menu_help(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "menu:support")
 async def menu_support(callback: CallbackQuery, ctx: AppContext) -> None:
     await callback.message.edit_text(
-        f"{title('⌁', 'Support')}\n\n{ctx.settings.support_text}\n\n↗ {ctx.settings.support_url}",
+        f"{title('⌁', 'Support')}\n\n{ctx.settings.support_text}\n\n↗ <code>{ctx.settings.support_url}</code>",
         reply_markup=back_keyboard(),
     )
     await callback.answer()
@@ -512,7 +512,7 @@ async def _handle_owner_text(message: Message, action: str, ctx: AppContext) -> 
         else:
             raise ValueError("gunakan amount|uses atau code|amount|uses")
         await ctx.db.create_redeem_code(code, int(amount), int(uses), message.from_user.id)
-        return f"◇ Kode redeem dibuat:\n\n<code>{code}</code>\n$ Nilai: {amount}$ · Pemakaian: {uses}x"
+        return f"◇ Kode redeem dibuat:\n\n{copy_code(code)}\n$ Nilai: {amount}$ · Pemakaian: {uses}x"
     if action == "owner_addplan":
         name, price, max_bots = [part.strip() for part in text.split("|", 2)]
         await ctx.db.conn.execute(
