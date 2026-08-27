@@ -613,18 +613,21 @@ async def on_document(message: Message, state: FSMContext, ctx: AppContext) -> N
     doc = message.document
     if doc is None:
         return
-    loading = await message.answer(loading_message("Upload bot", 1, 4))
+    loading = await message.answer(loading_message("Menyiapkan upload", 1, 6))
     file = await message.bot.get_file(doc.file_id)
-    await loading.edit_text(loading_message("Upload bot", 2, 4))
+    await loading.edit_text(loading_message("Mengunduh file", 2, 6))
     buffer = io.BytesIO()
     await message.bot.download_file(file.file_path, destination=buffer)
     payload = buffer.getvalue()
 
     try:
-        await loading.edit_text(loading_message("Upload bot", 3, 4))
+        await loading.edit_text(loading_message("Mengekstrak dan menyimpan", 3, 6))
         bot_id, source_root, entry_point, kind = await ctx.hosting.save_uploaded_bot(user.id, doc.file_name or "bot.py", payload)
+        await loading.edit_text(loading_message("Menginstall requirements", 4, 6))
         await ctx.hosting.start_bot(bot_id, source_root, entry_point)
-        await loading.edit_text(loading_message("Upload bot", 4, 4))
+        await loading.edit_text(loading_message("Menjalankan bot", 5, 6))
+        await asyncio.sleep(0.2)
+        await loading.edit_text(loading_message("Upload selesai", 6, 6))
         await message.answer(
             f"{title('✓', 'Deployment Berhasil')}\n\n"
             f"# ID: <code>{bot_id}</code>\n"
@@ -749,9 +752,11 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
 
     if action == "log":
         log_path = Path(bot_row["source_path"]) / "runtime.log"
-        log = tail_log(log_path)
+        log = tail_log(log_path, lines=120)
         await callback.message.edit_text(
-            f"{title('≡', f'Log Bot #{bot_id}')}\n\n<pre>{escape(log[-3500:])}</pre>",
+            f"{title('≡', f'Log Bot #{bot_id}')}\n"
+            "┊ Log tersimpan otomatis dan tidak dihapus saat refresh.\n\n"
+            f"<pre>{escape(log[-3500:])}</pre>",
             reply_markup=bot_actions_keyboard(
                 bot_id,
                 bot_row["status"] == "running",

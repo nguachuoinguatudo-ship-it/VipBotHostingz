@@ -56,10 +56,8 @@ def join_keyboard(entries: list[tuple[str, str]]) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def back_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text="‹ Kembali", callback_data="menu:home")
-    return builder.as_markup()
+def back_keyboard() -> None:
+    return None
 
 
 def yes_no_keyboard(yes_cb: str, no_cb: str) -> InlineKeyboardMarkup:
