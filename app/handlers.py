@@ -638,7 +638,9 @@ async def reply_menu_priority(message: Message, state: FSMContext, ctx: AppConte
         "menu:owner": menu_owner,
     }
     handler = handlers[action]
-    if action in {"menu:upload", "menu:redeem"}:
+    if action == "menu:upload":
+        await handler(callback, state, ctx)
+    elif action == "menu:redeem":
         await handler(callback, state)
     elif action in {"menu:mybots", "menu:referral", "menu:balance", "menu:profile", "menu:plan", "menu:support", "menu:runtime", "menu:owner"}:
         await handler(callback, ctx)
