@@ -28,6 +28,9 @@ class Settings:
     support_text: str
     database_path: Path
     data_dir: Path
+    auto_restart: bool
+    memory_limit_mb: int
+    cpu_limit_seconds: int
 
     @property
     def owner_names(self) -> list[str]:
@@ -52,6 +55,9 @@ def get_settings() -> Settings:
     support_text = os.getenv("SUPPORT_TEXT", "Hubungi support untuk bantuan.").strip()
     database_path = Path(os.getenv("DATABASE_PATH", "data/bot.db"))
     data_dir = Path(os.getenv("DATA_DIR", "data"))
+    auto_restart = os.getenv("AUTO_RESTART", "true").strip().lower() in {"1", "true", "yes", "on"}
+    memory_limit_mb = max(128, int(os.getenv("BOT_MEMORY_LIMIT_MB", "512")))
+    cpu_limit_seconds = max(0, int(os.getenv("BOT_CPU_LIMIT_SECONDS", "0")))
 
     return Settings(
         bot_token=bot_token,
@@ -64,4 +70,7 @@ def get_settings() -> Settings:
         support_text=support_text,
         database_path=database_path,
         data_dir=data_dir,
+        auto_restart=auto_restart,
+        memory_limit_mb=memory_limit_mb,
+        cpu_limit_seconds=cpu_limit_seconds,
     )

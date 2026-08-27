@@ -24,6 +24,7 @@ async def main() -> None:
 
     hosting = HostingManager(db, settings.data_dir)
     hosting.prepare()
+    hosting.configure(settings.auto_restart, settings.memory_limit_mb, settings.cpu_limit_seconds)
 
     bot = Bot(
         settings.bot_token,

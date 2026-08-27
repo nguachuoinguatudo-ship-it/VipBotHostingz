@@ -5,6 +5,8 @@ import os
 import shutil
 import sys
 import zipfile
+import contextlib
+import signal
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +24,18 @@ class HostedProcess:
     log_file: BinaryIO
 
 
+def _apply_resource_limits(memory_limit_mb: int, cpu_limit_seconds: int) -> None:
+    try:
+        import resource
+    except ImportError:
+        return
+    if memory_limit_mb > 0:
+        limit = memory_limit_mb * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+    if cpu_limit_seconds > 0:
+        resource.setrlimit(resource.RLIMIT_CPU, (cpu_limit_seconds, cpu_limit_seconds))
+
+
 def tail_log(path: Path, lines: int = 60) -> str:
     if not path.exists():
         return "Log belum tersedia."
@@ -37,10 +51,19 @@ class HostingManager:
         self.tmp_dir = data_dir / "tmp"
         self.vendor_dir_name = "vendor"
         self.processes: dict[int, HostedProcess] = {}
+        self._stop_requested: set[int] = set()
+        self.auto_restart = True
+        self.memory_limit_mb = 512
+        self.cpu_limit_seconds = 0
 
     def prepare(self) -> None:
         self.bots_dir.mkdir(parents=True, exist_ok=True)
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    def configure(self, auto_restart: bool, memory_limit_mb: int, cpu_limit_seconds: int) -> None:
+        self.auto_restart = auto_restart
+        self.memory_limit_mb = memory_limit_mb
+        self.cpu_limit_seconds = cpu_limit_seconds
 
     async def restart_running_bots(self) -> None:
         bots = await self.db.list_all_bots()
@@ -73,6 +96,7 @@ class HostingManager:
             await self.install_requirements(workdir, requirements, vendor_dir)
 
         log_path = workdir / "runtime.log"
+        self._rotate_log(log_path)
         log_file = log_path.open("ab", buffering=0)
         try:
             process = await asyncio.create_subprocess_exec(
@@ -83,6 +107,8 @@ class HostingManager:
                 env=env,
                 stdout=log_file,
                 stderr=asyncio.subprocess.STDOUT,
+                start_new_session=True,
+                preexec_fn=lambda: _apply_resource_limits(self.memory_limit_mb, self.cpu_limit_seconds),
             )
         except Exception:
             log_file.close()
@@ -101,16 +127,45 @@ class HostingManager:
             log_file.close()
             await self.db.update_bot_status(bot_id, "stopped")
             raise RuntimeError(f"Bot berhenti saat start:\n{tail_log(log_path)}")
+        asyncio.create_task(self._watch_process(self.processes[bot_id]))
         return True
+
+    async def _watch_process(self, hosted: HostedProcess) -> None:
+        return_code = await hosted.process.wait()
+        current = self.processes.get(hosted.bot_id)
+        if current is not hosted:
+            return
+        self.processes.pop(hosted.bot_id, None)
+        with contextlib.suppress(Exception):
+            hosted.log_file.close()
+        if hosted.bot_id in self._stop_requested:
+            self._stop_requested.discard(hosted.bot_id)
+            await self.db.update_bot_status(hosted.bot_id, "stopped")
+            return
+        await self.db.update_bot_status(hosted.bot_id, "crashed")
+        if self.auto_restart and return_code != 0:
+            await asyncio.sleep(2)
+            row = await self.db.get_bot(hosted.bot_id)
+            if row and row["status"] == "crashed":
+                await self.start_bot(hosted.bot_id, Path(row["source_path"]), Path(row["entry_point"]), resume=True)
+
+    def _rotate_log(self, path: Path, max_bytes: int = 5 * 1024 * 1024) -> None:
+        if path.exists() and path.stat().st_size >= max_bytes:
+            rotated = path.with_suffix(path.suffix + ".1")
+            with contextlib.suppress(OSError):
+                rotated.unlink()
+            path.rename(rotated)
 
     async def stop_bot(self, bot_id: int) -> bool:
         hosted = self.processes.pop(bot_id, None)
         if hosted and hosted.process.returncode is None:
+            self._stop_requested.add(bot_id)
             hosted.process.terminate()
             try:
                 await asyncio.wait_for(hosted.process.wait(), timeout=8)
             except TimeoutError:
-                hosted.process.kill()
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(hosted.process.pid, signal.SIGKILL)
                 await hosted.process.wait()
         if hosted:
             hosted.log_file.close()

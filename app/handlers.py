@@ -759,7 +759,10 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
         return
 
     if action == "open":
-        status = "Running" if bot_row["status"] == "running" else "Stopped"
+        status = {
+            "running": "Running",
+            "crashed": "Crashed",
+        }.get(bot_row["status"], "Stopped")
         await callback.message.edit_text(
             f"{title('◆', f'Bot #{bot_id}')}\n\n"
             f"┊ Nama: <b>{bot_row['name']}</b>\n"
