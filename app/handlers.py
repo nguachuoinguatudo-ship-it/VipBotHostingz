@@ -63,6 +63,23 @@ class ReplyCallback:
         return None
 
 
+REPLY_MENU_ACTIONS = {
+    "✦ Upload Bot": "menu:upload",
+    "◆ My Bots": "menu:mybots",
+    "◇ Buy Plan": "menu:buyplan",
+    "⌁ Referral": "menu:referral",
+    "$ Saldo": "menu:balance",
+    "◎ Profile": "menu:profile",
+    "▣ Plan": "menu:plan",
+    "◇ Redeem": "menu:redeem",
+    "? Help": "menu:help",
+    "» Ping": "menu:ping",
+    "⌁ Support": "menu:support",
+    "◌ Runtime": "menu:runtime",
+    "✧ Owner Panel": "menu:owner",
+}
+
+
 def is_owner(settings: Settings, user_id: int) -> bool:
     return user_id in settings.owner_ids
 
