@@ -4,6 +4,22 @@ from html import escape
 from datetime import timedelta
 
 
+SMALL_CAPS = str.maketrans({
+    "A": "ᴀ", "B": "ʙ", "C": "ᴄ", "D": "ᴅ", "E": "ᴇ", "F": "ꜰ", "G": "ɢ",
+    "H": "ʜ", "I": "ɪ", "J": "ᴊ", "K": "ᴋ", "L": "ʟ", "M": "ᴍ", "N": "ɴ",
+    "O": "ᴏ", "P": "ᴘ", "Q": "Q", "R": "ʀ", "S": "s", "T": "ᴛ", "U": "ᴜ",
+    "V": "ᴠ", "W": "ᴡ", "X": "x", "Y": "ʏ", "Z": "ᴢ",
+})
+
+
+def small_caps(value: str) -> str:
+    return value.translate(SMALL_CAPS)
+
+
+def title(icon: str, value: str) -> str:
+    return f"{icon} <b>{small_caps(value.upper())}</b>"
+
+
 def format_seconds(seconds: int) -> str:
     delta = timedelta(seconds=max(0, seconds))
     days = delta.days
@@ -35,43 +51,43 @@ def progress_bar(current: int, total: int, width: int = 12) -> str:
 def loading_message(title: str, current: int, total: int) -> str:
     percent = int(max(0, min(current, total)) / max(total, 1) * 100)
     return (
-        f"⏳ <b>{escape(title.upper())}</b>\n\n"
+        f"◌ <b>{escape(title.upper())}</b>\n\n"
         f"<code>{progress_bar(current, total)}</code> <b>{percent}%</b>\n"
-        "╰ Menyiapkan layanan premium..."
+        "╰ tunggu sebentar, lagi disiapkan..."
     )
 
 
 def start_message(bot_name: str, bot_version: str, user_name: str, plan: str, bot_status: str, balance: int, owners: list[str], plan_expiry: str = "Selamanya") -> str:
     owner_text = ", ".join(escape(owner) for owner in owners) or "WanzHosting Team"
     return (
-        f"✦ {escape(bot_name)} ⚡ <b>{escape(bot_version)}</b>\n"
+        f"✦ {escape(bot_name)} 〄 <b>{escape(bot_version)}</b>\n"
         "━━━━━━━━━━━━━━━━━━━\n\n"
-        f"👋 <b>𝗪𝗘𝗟𝗖𝗢𝗠𝗘, {escape(user_name)}</b>\n"
+        f"┊ <b>𝗪𝗘𝗟𝗖𝗢𝗠𝗘, {escape(user_name)}</b>\n"
         "┌────────────────────\n"
-        f"│ 💎 𝗣𝗟𝗔𝗡      ┃ <b>{escape(plan)}</b>\n"
-        f"│ 🗓 𝗔𝗞𝗧𝗜𝗙    ┃ <b>{escape(plan_expiry)}</b>\n"
-        f"│ 🟢 𝗦𝗧𝗔𝗧𝗨𝗦   ┃ <b>{escape(bot_status)}</b>\n"
-        f"│ 💰 𝗦𝗔𝗟𝗗𝗢    ┃ <b>{format_money(balance)}$</b>\n"
-        f"│ 🛡 𝗣𝗢𝗪𝗘𝗥𝗘𝗗  ┃ <b>{owner_text}</b>\n"
+        f"│ ◇ 𝗣𝗟𝗔𝗡      ┃ <b>{escape(plan)}</b>\n"
+        f"│ ◌ 𝗔𝗞𝗧𝗜𝗙    ┃ <b>{escape(plan_expiry)}</b>\n"
+        f"│ ● 𝗦𝗧𝗔𝗧𝗨𝗦   ┃ <b>{escape(bot_status)}</b>\n"
+        f"│ $ 𝗦𝗔𝗟𝗗𝗢    ┃ <b>{format_money(balance)}$</b>\n"
+        f"│ ✧ 𝗣𝗢𝗪𝗘𝗥𝗘𝗗  ┃ <b>{owner_text}</b>\n"
         "└────────────────────\n\n"
-        "✨ <b>Pilih layanan di bawah untuk mulai</b> 👇"
+        "Pilih menu di bawah kalau mau mulai."
     )
 
 
 def access_message() -> str:
     return (
-        "🔐 <b>AKSES TERBATAS</b>\n\n"
-        "Join semua channel/grup resmi di bawah, lalu tekan <b>✅ Cek Akses</b>."
+        "⌁ <b>AKSES TERBATAS</b>\n\n"
+        "Join semua channel/grup resmi di bawah, lalu tekan <b>↻ Cek Akses</b>."
     )
 
 
 def help_message() -> str:
     return (
-        "📖 <b>QUICK GUIDE</b>\n\n"
-        "🚀 <b>Upload Bot</b> — kirim file <code>.py</code> atau <code>.zip</code>\n"
-        "🛰 <b>My Bots</b> — kelola bot dan status runtime\n"
-        "💎 <b>Buy Plan</b> — beli slot hosting sesuai kebutuhan\n"
-        "🎁 <b>Referral</b> — bonus <b>100$</b> tiap user baru\n"
-        "🎟 <b>Redeem</b> — tukarkan kode saldo\n\n"
-        "⚙️ Pastikan bot upload memiliki entry point Python yang valid."
+        f"{title('?', 'Bantuan')}\n\n"
+        "✦ <b>Upload Bot</b> — kirim file <code>.py</code> atau <code>.zip</code>\n"
+        "◆ <b>My Bots</b> — kelola bot dan status runtime\n"
+        "◇ <b>Buy Plan</b> — beli slot hosting sesuai kebutuhan\n"
+        "⌁ <b>Referral</b> — bonus <b>100$</b> tiap user baru\n"
+        "▣ <b>Redeem</b> — tukarkan kode saldo\n\n"
+        "└ Pastikan file punya entry point Python yang valid."
     )

@@ -7,6 +7,7 @@ import shutil
 import string
 import time
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 from typing import Callable
 
@@ -20,7 +21,7 @@ from aiogram.types import CallbackQuery, Message
 
 from .config import Settings
 from .db import Database, utc_now
-from .hosting import HostingManager
+from .hosting import HostingManager, tail_log
 from .keyboards import (
     back_keyboard,
     bot_actions_keyboard,
@@ -30,7 +31,7 @@ from .keyboards import (
     main_keyboard,
     owner_keyboard,
 )
-from .texts import access_message, format_money, format_seconds, help_message, loading_message, start_message
+from .texts import access_message, format_money, format_seconds, help_message, loading_message, start_message, title
 
 
 router = Router()
@@ -239,7 +240,7 @@ async def menu_home(callback: CallbackQuery, ctx: AppContext) -> None:
 async def menu_upload(callback: CallbackQuery, state: FSMContext, ctx: AppContext) -> None:
     await state.update_data(action="upload_bot")
     await callback.message.edit_text(
-        "🚀 <b>UPLOAD CENTER</b>\n\n"
+        f"{title('✦', 'Upload Bot')}\n\n"
         "Kirim file bot kamu sekarang:\n"
         "▫️ Python: <code>.py</code> / <code>.zip</code>\n"
         "ZIP akan diekstrak otomatis dan mencari file Python utama.",
@@ -256,11 +257,11 @@ async def menu_mybots(callback: CallbackQuery, ctx: AppContext) -> None:
         await callback.answer()
         return
 
-    lines = ["🛰 <b>MY BOTS</b>", "╰ Pilih bot untuk membuka control center", ""]
+    lines = [title("◆", "My Bots"), "╰ Pilih bot yang mau dikelola", ""]
     buttons: list[tuple[int, str]] = []
     for bot in bots[:20]:
         status = "Running" if bot["status"] == "running" else "Stopped"
-        lines.append(f"{('🟢' if status == 'Running' else '🔴')} <b>#{bot['id']} {bot['name']}</b> · {status}")
+        lines.append(f"{('●' if status == 'Running' else '○')} <b>#{bot['id']} {bot['name']}</b> · {status}")
         buttons.append((int(bot["id"]), f"#{bot['id']} {bot['name']}"))
     await callback.message.edit_text(
         "\n".join(lines),
@@ -272,9 +273,9 @@ async def menu_mybots(callback: CallbackQuery, ctx: AppContext) -> None:
 @router.callback_query(F.data == "menu:buyplan")
 async def menu_buyplan(callback: CallbackQuery) -> None:
     text = (
-        "💎 <b>HOSTING PLANS</b>\n\n"
-        "⚡ <b>PRO</b> — 200$ / 2 slot bot\n"
-        "👑 <b>VIP</b> — 1.000$ / 5 slot bot\n\n"
+        f"{title('◇', 'Hosting Plans')}\n\n"
+        "◆ <b>PRO</b> — 200$ / 2 slot bot\n"
+        "✧ <b>VIP</b> — 1.000$ / 5 slot bot\n\n"
         "Beli +1 atau +5. Setiap pembelian menambah slot hosting kamu."
     )
     await callback.message.edit_text(text, reply_markup=buy_plan_keyboard())
@@ -295,9 +296,9 @@ async def buy_plan(callback: CallbackQuery, ctx: AppContext) -> None:
     if int(user["balance"]) < price:
         await callback.answer("Saldo tidak cukup", show_alert=True)
         return
-    await callback.message.edit_text(loading_message("Secure Checkout", 1, 3))
+    await callback.message.edit_text(loading_message("Pembelian plan", 1, 3))
     await asyncio.sleep(0.25)
-    await callback.message.edit_text(loading_message("Secure Checkout", 2, 3))
+    await callback.message.edit_text(loading_message("Pembelian plan", 2, 3))
     await asyncio.sleep(0.35)
     success, remaining, _, new_limit = await ctx.db.purchase_plan(callback.from_user.id, plan_name, quantity)
     if not success:
@@ -305,11 +306,11 @@ async def buy_plan(callback: CallbackQuery, ctx: AppContext) -> None:
         await callback.answer("Gagal", show_alert=True)
         return
     await callback.message.edit_text(
-        "✅ <b>PEMBELIAN BERHASIL</b>\n\n"
-        f"💎 Plan: <b>{plan['plan_name']} ×{quantity}</b>\n"
-        f"🚀 Kapasitas: <b>{new_limit} bot</b>\n"
-        f"💰 Terpakai: <b>{format_money(price)}$</b>\n"
-        f"💳 Sisa saldo: <b>{format_money(remaining)}$</b>",
+        "✓ <b>PEMBELIAN BERHASIL</b>\n\n"
+        f"◇ Plan: <b>{plan['plan_name']} ×{quantity}</b>\n"
+        f"◆ Kapasitas: <b>{new_limit} bot</b>\n"
+        f"$ Terpakai: <b>{format_money(price)}$</b>\n"
+        f"$ Sisa saldo: <b>{format_money(remaining)}$</b>",
         reply_markup=back_keyboard(),
     )
     await callback.answer("Berhasil")
@@ -319,9 +320,9 @@ async def buy_plan(callback: CallbackQuery, ctx: AppContext) -> None:
 async def menu_referral(callback: CallbackQuery, ctx: AppContext) -> None:
     link = ctx.referral_link(callback.from_user.id)
     text = (
-        "🎁 <b>REFERRAL PROGRAM</b>\n\n"
-        f"🔗 Link kamu:\n<code>{link}</code>\n\n"
-        "💰 Setiap user baru dari link kamu memberi bonus <b>100$</b>."
+        "⌁ <b>REFERRAL PROGRAM</b>\n\n"
+        f"↗ Link kamu:\n<code>{link}</code>\n\n"
+        "$ Setiap user baru dari link kamu memberi bonus <b>100$</b>."
     )
     await callback.message.edit_text(text, reply_markup=back_keyboard())
     await callback.answer()
@@ -332,10 +333,10 @@ async def menu_balance(callback: CallbackQuery, ctx: AppContext) -> None:
     user = await ctx.db.get_user(callback.from_user.id)
     bots = await ctx.db.count_user_bots(callback.from_user.id)
     await callback.message.edit_text(
-        "💰 <b>WALLET OVERVIEW</b>\n\n"
-        f"💳 Saldo: <b>{format_money(int(user['balance']))}$</b>\n"
-        f"💎 Plan: <b>{user['plan']}</b>\n"
-        f"🛰 Bot aktif: <b>{bots}</b>",
+        f"{title('$', 'Wallet Overview')}\n\n"
+        f"$ Saldo: <b>{format_money(int(user['balance']))}$</b>\n"
+        f"◇ Plan: <b>{user['plan']}</b>\n"
+        f"◆ Bot aktif: <b>{bots}</b>",
         reply_markup=back_keyboard(),
     )
     await callback.answer()
@@ -346,14 +347,14 @@ async def menu_profile(callback: CallbackQuery, ctx: AppContext) -> None:
     user = await ctx.db.get_user(callback.from_user.id)
     rows = await ctx.db.count_user_bots(callback.from_user.id)
     text = (
-        "👤 <b>PROFILE</b>\n\n"
-        f"🪪 ID: <code>{callback.from_user.id}</code>\n"
-        f"📝 Nama: <b>{callback.from_user.full_name}</b>\n"
-        f"🔗 Username: @{callback.from_user.username or '-'}\n"
-        f"💎 Plan: <b>{user['plan']}</b>\n"
-        f"💰 Saldo: <b>{format_money(int(user['balance']))}$</b>\n"
-        f"🎁 Referral: <b>{int(user['referrals_count'])}</b>\n"
-        f"🛰 Bot aktif: <b>{rows}</b>"
+        f"{title('◎', 'Profile')}\n\n"
+        f"# ID: <code>{callback.from_user.id}</code>\n"
+        f"┊ Nama: <b>{callback.from_user.full_name}</b>\n"
+        f"↗ Username: @{callback.from_user.username or '-'}\n"
+        f"◇ Plan: <b>{user['plan']}</b>\n"
+        f"$ Saldo: <b>{format_money(int(user['balance']))}$</b>\n"
+        f"⌁ Referral: <b>{int(user['referrals_count'])}</b>\n"
+        f"◆ Bot aktif: <b>{rows}</b>"
     )
     await callback.message.edit_text(text, reply_markup=back_keyboard())
     await callback.answer()
@@ -362,14 +363,14 @@ async def menu_profile(callback: CallbackQuery, ctx: AppContext) -> None:
 @router.callback_query(F.data == "menu:plan")
 async def menu_plan(callback: CallbackQuery, ctx: AppContext) -> None:
     plans = await ctx.db.list_plans()
-    lines = ["💎 <b>DAFTAR PLAN</b>", ""]
+    lines = [title("◇", "Daftar Plan"), ""]
     for plan in plans:
         lines.append(
             f"▫️ <b>{plan['plan_name']}</b> — {format_money(int(plan['price']))}$ / {plan['max_bots']} slot"
         )
     user = await ctx.db.get_user(callback.from_user.id)
     lines.append("")
-    lines.append(f"\n✅ Plan aktif: <b>{user['plan']}</b> · kapasitas <b>{user['plan_limit']} bot</b>")
+    lines.append(f"\n✓ Plan aktif: <b>{user['plan']}</b> · kapasitas <b>{user['plan_limit']} bot</b>")
     await callback.message.edit_text("\n".join(lines), reply_markup=buy_plan_keyboard())
     await callback.answer()
 
@@ -378,7 +379,7 @@ async def menu_plan(callback: CallbackQuery, ctx: AppContext) -> None:
 async def menu_redeem(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(action="redeem_code")
     await callback.message.edit_text(
-        "🎟 <b>REDEEM CENTER</b>\n\nKirim kode redeem kamu sekarang.",
+        f"{title('◇', 'Redeem')}\n\nKirim kode redeem kamu sekarang.",
         reply_markup=back_keyboard(),
     )
     await callback.answer()
@@ -403,9 +404,9 @@ async def menu_support(callback: CallbackQuery, ctx: AppContext) -> None:
 async def menu_runtime(callback: CallbackQuery, ctx: AppContext) -> None:
     uptime = int(time.monotonic() - ctx.started_at)
     await callback.message.edit_text(
-        "📡 <b>SYSTEM RUNTIME</b>\n\n"
-        f"⏱ Uptime: <b>{format_seconds(uptime)}</b>\n"
-        f"🟢 Bot aktif: <b>{len(ctx.hosting.processes)}</b>",
+        f"{title('◌', 'System Runtime')}\n\n"
+        f"⌁ Uptime: <b>{format_seconds(uptime)}</b>\n"
+        f"● Bot aktif: <b>{len(ctx.hosting.processes)}</b>",
         reply_markup=back_keyboard(),
     )
     await callback.answer()
@@ -430,7 +431,7 @@ async def menu_owner(callback: CallbackQuery, ctx: AppContext) -> None:
     if not is_owner(ctx.settings, callback.from_user.id):
         await callback.answer("Akses ditolak", show_alert=True)
         return
-    await callback.message.edit_text("👑 <b>OWNER CONTROL CENTER</b>\n\nKelola user, plan, saldo, dan seluruh runtime.", reply_markup=owner_keyboard())
+    await callback.message.edit_text(f"{title('✧', 'Menu Owner')}\n\nKelola user, plan, saldo, dan bot yang sedang berjalan.", reply_markup=owner_keyboard())
     await callback.answer()
 
 
@@ -511,7 +512,7 @@ async def _handle_owner_text(message: Message, action: str, ctx: AppContext) -> 
         else:
             raise ValueError("gunakan amount|uses atau code|amount|uses")
         await ctx.db.create_redeem_code(code, int(amount), int(uses), message.from_user.id)
-        return f"🎟 Kode redeem dibuat:\n\n<code>{code}</code>\n💰 Nilai: {amount}$ · Pemakaian: {uses}x"
+        return f"◇ Kode redeem dibuat:\n\n<code>{code}</code>\n$ Nilai: {amount}$ · Pemakaian: {uses}x"
     if action == "owner_addplan":
         name, price, max_bots = [part.strip() for part in text.split("|", 2)]
         await ctx.db.conn.execute(
@@ -576,23 +577,23 @@ async def on_document(message: Message, state: FSMContext, ctx: AppContext) -> N
     doc = message.document
     if doc is None:
         return
-    loading = await message.answer(loading_message("Upload Center", 1, 4))
+    loading = await message.answer(loading_message("Upload bot", 1, 4))
     file = await message.bot.get_file(doc.file_id)
-    await loading.edit_text(loading_message("Upload Center", 2, 4))
+    await loading.edit_text(loading_message("Upload bot", 2, 4))
     buffer = io.BytesIO()
     await message.bot.download_file(file.file_path, destination=buffer)
     payload = buffer.getvalue()
 
     try:
-        await loading.edit_text(loading_message("Upload Center", 3, 4))
+        await loading.edit_text(loading_message("Upload bot", 3, 4))
         bot_id, source_root, entry_point, kind = await ctx.hosting.save_uploaded_bot(user.id, doc.file_name or "bot.py", payload)
         await ctx.hosting.start_bot(bot_id, source_root, entry_point)
-        await loading.edit_text(loading_message("Upload Center", 4, 4))
+        await loading.edit_text(loading_message("Upload bot", 4, 4))
         await message.answer(
-            "✅ <b>DEPLOYMENT BERHASIL</b>\n\n"
-            f"🛰 ID: <code>{bot_id}</code>\n"
-            f"📦 Runtime: <b>{kind.upper()}</b>\n"
-            "🟢 Status: <b>RUNNING</b>",
+            f"{title('✓', 'Deployment Berhasil')}\n\n"
+            f"# ID: <code>{bot_id}</code>\n"
+            f"▣ Runtime: <b>{kind.upper()}</b>\n"
+            "● Status: <b>RUNNING</b>",
             reply_markup=back_keyboard(),
         )
     except Exception as exc:
@@ -659,6 +660,20 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
             f"Tipe: {bot_row['kind']}\n"
             f"Status: {status}\n"
             f"Entry: {bot_row['entry_point']}",
+            reply_markup=bot_actions_keyboard(
+                bot_id,
+                bot_row["status"] == "running",
+                is_owner(ctx.settings, callback.from_user.id),
+            ),
+        )
+        await callback.answer()
+        return
+
+    if action == "log":
+        log_path = Path(bot_row["source_path"]) / "runtime.log"
+        log = tail_log(log_path)
+        await callback.message.edit_text(
+            f"{title('≡', f'Log Bot #{bot_id}')}\n\n<pre>{escape(log[-3500:])}</pre>",
             reply_markup=bot_actions_keyboard(
                 bot_id,
                 bot_row["status"] == "running",

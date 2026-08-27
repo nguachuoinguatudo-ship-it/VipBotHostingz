@@ -8,6 +8,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import BinaryIO
 
 from .db import Database, utc_now
 
@@ -18,6 +19,14 @@ class HostedProcess:
     process: asyncio.subprocess.Process
     workdir: Path
     entry_point: Path
+    log_file: BinaryIO
+
+
+def tail_log(path: Path, lines: int = 60) -> str:
+    if not path.exists():
+        return "Log belum tersedia."
+    content = path.read_text(errors="replace").splitlines()
+    return "\n".join(content[-lines:]) or "Log masih kosong."
 
 
 class HostingManager:
@@ -55,25 +64,41 @@ class HostingManager:
             env["PYTHONPATH"] = f"{vendor_dir}{os.pathsep}{existing}" if existing else str(vendor_dir)
 
         requirements = workdir / "requirements.txt"
+        if not requirements.exists():
+            nested_requirements = sorted(entry_point.parent.rglob("requirements.txt"))
+            requirements = nested_requirements[0] if nested_requirements else requirements
         if requirements.exists():
             await self.install_requirements(workdir, requirements, vendor_dir)
 
-        process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-u",
-            entry_point.as_posix(),
-            cwd=workdir.as_posix(),
-            env=env,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
+        log_path = workdir / "runtime.log"
+        log_file = log_path.open("ab", buffering=0)
+        try:
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-u",
+                entry_point.as_posix(),
+                cwd=workdir.as_posix(),
+                env=env,
+                stdout=log_file,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+        except Exception:
+            log_file.close()
+            raise
         self.processes[bot_id] = HostedProcess(
             bot_id=bot_id,
             process=process,
             workdir=workdir,
             entry_point=entry_point,
+            log_file=log_file,
         )
         await self.db.update_bot_status(bot_id, "running", process.pid, utc_now())
+        await asyncio.sleep(0.5)
+        if process.returncode is not None:
+            self.processes.pop(bot_id, None)
+            log_file.close()
+            await self.db.update_bot_status(bot_id, "stopped")
+            raise RuntimeError(f"Bot berhenti saat start:\n{tail_log(log_path)}")
         return True
 
     async def stop_bot(self, bot_id: int) -> bool:
@@ -85,6 +110,8 @@ class HostingManager:
             except TimeoutError:
                 hosted.process.kill()
                 await hosted.process.wait()
+        if hosted:
+            hosted.log_file.close()
         await self.db.update_bot_status(bot_id, "stopped")
         return True
 
@@ -117,13 +144,20 @@ class HostingManager:
             "-r",
             requirements.as_posix(),
         ]
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            cwd=workdir.as_posix(),
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-        await process.wait()
+        install_log_path = workdir / "install.log"
+        install_log = install_log_path.open("ab", buffering=0)
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                cwd=workdir.as_posix(),
+                stdout=install_log,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            await process.wait()
+        finally:
+            install_log.close()
+        if process.returncode != 0:
+            raise RuntimeError(f"Gagal memasang requirements:\n{tail_log(install_log_path)}")
 
     async def save_uploaded_bot(
         self,
