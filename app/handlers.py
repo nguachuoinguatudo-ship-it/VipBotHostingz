@@ -31,7 +31,7 @@ from .keyboards import (
     main_keyboard,
     owner_keyboard,
 )
-from .texts import access_message, copy_code, format_money, format_seconds, help_message, loading_message, quote_text, start_message, title
+from .texts import access_message, copy_code, format_money, format_seconds, help_message, loading_message, quote_text, rich_home_message, start_message, title
 
 
 router = Router()
@@ -153,7 +153,22 @@ async def safe_send_home(message: Message, ctx: AppContext) -> None:
         ctx.settings.owner_names,
         plan_expiry_text(record),
     )
-    await message.answer(text, reply_markup=main_keyboard(is_owner(ctx.settings, user.id)))
+    await message.bot.send_rich_message(
+        user.id,
+        rich_home_message(
+            ctx.settings.bot_name,
+            ctx.settings.bot_version,
+            user.full_name,
+            f"{record['plan']} · {record['plan_limit']} slot",
+            f"Running {running} Bot" if running else "Idle",
+            int(record["balance"]),
+            ctx.settings.owner_names,
+            plan_expiry_text(record),
+            is_owner=is_owner(ctx.settings, user.id),
+        ),
+        text,
+        main_keyboard(is_owner(ctx.settings, user.id)),
+    )
 
 
 @router.message(Command("start"))
@@ -180,6 +195,13 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext,
                         (referrer_id,),
                     )
                     await ctx.db.conn.commit()
+                    try:
+                        await message.bot.send_message(
+                            referrer_id,
+                            f"✦ Referral masuk\n\n┊ {user.full_name} bergabung lewat link kamu.\n$ Bonus: +100$",
+                        )
+                    except Exception:
+                        pass
         except ValueError:
             pass
 
