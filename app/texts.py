@@ -55,38 +55,6 @@ def title(icon: str, value: str) -> str:
     return f"{icon} <b>{bold_sans(value.upper())}</b>"
 
 
-def rich_home_buttons(is_owner: bool) -> str:
-    buttons = [
-        ("✦ Upload Bot", "menu:upload", "success"),
-        ("◆ My Bots", "menu:mybots", "primary"),
-        ("◇ Buy Plan", "menu:buyplan", "success"),
-        ("⌁ Referral", "menu:referral", "link"),
-        ("$ Saldo", "menu:balance", "primary"),
-        ("◎ Profile", "menu:profile", "link"),
-        ("▣ Plan", "menu:plan", "primary"),
-        ("◇ Redeem", "menu:redeem", "success"),
-        ("? Help", "menu:help", "link"),
-        ("» Ping", "menu:ping", "primary"),
-        ("⌁ Support", "menu:support", "link"),
-        ("◌ Runtime", "menu:runtime", "primary"),
-    ]
-    if is_owner:
-        buttons.append(("✧ Owner Panel", "menu:owner", "danger"))
-    rows: list[str] = []
-    for index in range(0, len(buttons), 2):
-        row = buttons[index:index + 2]
-        rows.append("<tg-button-row>" + "".join(
-            f'<tg-button type="callback_data" style="{style}" data="{callback}">{label}</tg-button>'
-            for label, callback, style in row
-        ) + "</tg-button-row>")
-    return "\n".join(rows)
-
-
-def rich_home_message(*args, **kwargs) -> str:
-    is_owner = kwargs.pop("is_owner", False)
-    return start_message(*args, **kwargs) + "\n\n" + rich_home_buttons(is_owner)
-
-
 def format_seconds(seconds: int) -> str:
     delta = timedelta(seconds=max(0, seconds))
     days = delta.days
