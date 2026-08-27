@@ -55,6 +55,8 @@ class HostingManager:
         if bot_id in self.processes:
             return True
 
+        source_path = source_path.resolve()
+        entry_point = entry_point.resolve()
         workdir = source_path if source_path.is_dir() else source_path.parent
         vendor_dir = workdir / self.vendor_dir_name
         env = os.environ.copy()

@@ -253,7 +253,7 @@ async def menu_upload(callback: CallbackQuery, state: FSMContext, ctx: AppContex
 async def menu_mybots(callback: CallbackQuery, ctx: AppContext) -> None:
     bots = await ctx.db.list_user_bots(callback.from_user.id)
     if not bots:
-        await callback.message.edit_text("Belum ada bot aktif.", reply_markup=back_keyboard())
+        await callback.message.edit_text(f"{title('○', 'My Bots')}\n\nBelum ada bot yang aktif.", reply_markup=back_keyboard())
         await callback.answer()
         return
 
@@ -394,7 +394,7 @@ async def menu_help(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "menu:support")
 async def menu_support(callback: CallbackQuery, ctx: AppContext) -> None:
     await callback.message.edit_text(
-        f"{ctx.settings.support_text}\n\nSupport: {ctx.settings.support_url}",
+        f"{title('⌁', 'Support')}\n\n{ctx.settings.support_text}\n\n↗ {ctx.settings.support_url}",
         reply_markup=back_keyboard(),
     )
     await callback.answer()
@@ -415,7 +415,7 @@ async def menu_runtime(callback: CallbackQuery, ctx: AppContext) -> None:
 @router.callback_query(F.data == "menu:ping")
 async def menu_ping(callback: CallbackQuery) -> None:
     started = time.perf_counter()
-    await callback.answer("Pinging...")
+    await callback.answer("◌ mengecek koneksi...")
     elapsed = int((time.perf_counter() - started) * 1000)
     try:
         await callback.message.edit_text(
@@ -597,7 +597,11 @@ async def on_document(message: Message, state: FSMContext, ctx: AppContext) -> N
             reply_markup=back_keyboard(),
         )
     except Exception as exc:
-        await message.answer(f"Gagal memproses bot: {exc}", reply_markup=back_keyboard())
+        await message.answer(
+            f"× <b>UPLOAD GAGAL</b>\n\n<pre>{escape(str(exc)[-3500:])}</pre>\n\n"
+            "Buka menu bot lalu cek log untuk detailnya.",
+            reply_markup=back_keyboard(),
+        )
     finally:
         await state.clear()
 
@@ -655,11 +659,11 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
     if action == "open":
         status = "Running" if bot_row["status"] == "running" else "Stopped"
         await callback.message.edit_text(
-            f"Bot #{bot_id}\n"
-            f"Nama: {bot_row['name']}\n"
-            f"Tipe: {bot_row['kind']}\n"
-            f"Status: {status}\n"
-            f"Entry: {bot_row['entry_point']}",
+            f"{title('◆', f'Bot #{bot_id}')}\n\n"
+            f"┊ Nama: <b>{bot_row['name']}</b>\n"
+            f"┊ Tipe: <b>{bot_row['kind']}</b>\n"
+            f"┊ Status: <b>{status}</b>\n"
+            f"┊ Entry: <code>{bot_row['entry_point']}</code>",
             reply_markup=bot_actions_keyboard(
                 bot_id,
                 bot_row["status"] == "running",
@@ -699,7 +703,7 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
         await callback.message.edit_text("Bot sudah dihapus.", reply_markup=back_keyboard())
         return
     await callback.message.edit_text(
-        f"Bot #{bot_id}\nStatus: {'Running' if refreshed['status'] == 'running' else 'Stopped'}",
+        f"{title('◆', f'Bot #{bot_id}')}\n\nStatus: <b>{'Running' if refreshed['status'] == 'running' else 'Stopped'}</b>",
         reply_markup=bot_actions_keyboard(
             bot_id,
             refreshed["status"] == "running",
