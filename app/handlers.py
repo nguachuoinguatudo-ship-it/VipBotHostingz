@@ -280,7 +280,7 @@ async def menu_upload(callback: CallbackQuery, state: FSMContext, ctx: AppContex
         "Kirim file bot kamu sekarang:\n"
         "▫️ Python: <code>.py</code> / <code>.zip</code>\n"
         "ZIP akan diekstrak otomatis dan mencari file Python utama.",
-        reply_markup=back_keyboard(),
+        reply_markup=None,
     )
     await callback.answer()
 
@@ -608,6 +608,38 @@ async def on_document(message: Message, state: FSMContext, ctx: AppContext) -> N
     if running >= int(user_row["plan_limit"]):
         await message.answer("Limit plan kamu sudah penuh.", reply_markup=back_keyboard())
         await state.clear()
+        return
+
+    doc = message.document
+    if doc is None:
+        return
+    loading = await message.answer(loading_message("Upload bot", 1, 4))
+    file = await message.bot.get_file(doc.file_id)
+    await loading.edit_text(loading_message("Upload bot", 2, 4))
+    buffer = io.BytesIO()
+    await message.bot.download_file(file.file_path, destination=buffer)
+    payload = buffer.getvalue()
+
+    try:
+        await loading.edit_text(loading_message("Upload bot", 3, 4))
+        bot_id, source_root, entry_point, kind = await ctx.hosting.save_uploaded_bot(user.id, doc.file_name or "bot.py", payload)
+        await ctx.hosting.start_bot(bot_id, source_root, entry_point)
+        await loading.edit_text(loading_message("Upload bot", 4, 4))
+        await message.answer(
+            f"{title('✓', 'Deployment Berhasil')}\n\n"
+            f"# ID: <code>{bot_id}</code>\n"
+            f"▣ Runtime: <b>{kind.upper()}</b>\n"
+            "● Status: <b>RUNNING</b>",
+            reply_markup=back_keyboard(),
+        )
+    except Exception as exc:
+        await message.answer(
+            f"× <b>UPLOAD GAGAL</b>\n\n<pre>{escape(str(exc)[-3500:])}</pre>\n\n"
+            "Buka menu bot lalu cek log untuk detailnya.",
+            reply_markup=back_keyboard(),
+        )
+    finally:
+        await state.clear()
 
 
 @router.message(F.text.in_((
@@ -647,38 +679,6 @@ async def reply_menu_priority(message: Message, state: FSMContext, ctx: AppConte
     else:
         await handler(callback)
         return
-
-    doc = message.document
-    if doc is None:
-        return
-    loading = await message.answer(loading_message("Upload bot", 1, 4))
-    file = await message.bot.get_file(doc.file_id)
-    await loading.edit_text(loading_message("Upload bot", 2, 4))
-    buffer = io.BytesIO()
-    await message.bot.download_file(file.file_path, destination=buffer)
-    payload = buffer.getvalue()
-
-    try:
-        await loading.edit_text(loading_message("Upload bot", 3, 4))
-        bot_id, source_root, entry_point, kind = await ctx.hosting.save_uploaded_bot(user.id, doc.file_name or "bot.py", payload)
-        await ctx.hosting.start_bot(bot_id, source_root, entry_point)
-        await loading.edit_text(loading_message("Upload bot", 4, 4))
-        await message.answer(
-            f"{title('✓', 'Deployment Berhasil')}\n\n"
-            f"# ID: <code>{bot_id}</code>\n"
-            f"▣ Runtime: <b>{kind.upper()}</b>\n"
-            "● Status: <b>RUNNING</b>",
-            reply_markup=back_keyboard(),
-        )
-    except Exception as exc:
-        await message.answer(
-            f"× <b>UPLOAD GAGAL</b>\n\n<pre>{escape(str(exc)[-3500:])}</pre>\n\n"
-            "Buka menu bot lalu cek log untuk detailnya.",
-            reply_markup=back_keyboard(),
-        )
-    finally:
-        await state.clear()
-
 
 @router.message(F.text)
 async def on_text(message: Message, state: FSMContext, ctx: AppContext) -> None:

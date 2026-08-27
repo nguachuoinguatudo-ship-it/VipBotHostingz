@@ -103,17 +103,23 @@ def loading_message(title: str, current: int, total: int) -> str:
 def start_message(bot_name: str, bot_version: str, user_name: str, plan: str, bot_status: str, balance: int, owners: list[str], plan_expiry: str = "Selamanya") -> str:
     owner_text = ", ".join(escape(owner) for owner in owners) or "WanzHosting Team"
     return (
-        f"✦ {escape(bot_name)} 〄 <b>{escape(bot_version)}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━\n\n"
-        f"┊ <b>𝗪𝗘𝗟𝗖𝗢𝗠𝗘, {escape(user_name)}</b>\n"
-        "┌────────────────────\n"
-        f"│ ◇ 𝗣𝗟𝗔𝗡      ┃ <b>{escape(plan)}</b>\n"
-        f"│ ◌ 𝗔𝗞𝗧𝗜𝗙    ┃ <b>{escape(plan_expiry)}</b>\n"
-        f"│ ● 𝗦𝗧𝗔𝗧𝗨𝗦   ┃ <b>{escape(bot_status)}</b>\n"
-        f"│ $ 𝗦𝗔𝗟𝗗𝗢    ┃ <b>{format_money(balance)}$</b>\n"
-        f"│ ✧ 𝗣𝗢𝗪𝗘𝗥𝗘𝗗  ┃ <b>{owner_text}</b>\n"
+        f"✦ {escape(bot_name)} ⚡ 〄 <b>{escape(bot_version)}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━\n"
+        "┊ 𝗦𝗘𝗖𝗨𝗥𝗘 𝗛𝗢𝗦𝗧𝗜𝗡𝗚 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥\n"
         "└────────────────────\n\n"
-        "Pilih menu di bawah kalau mau mulai."
+        f"╭─〔 𝗪𝗘𝗟𝗖𝗢𝗠𝗘 〕\n"
+        f"┊ 𝗛𝗲𝗹𝗹𝗼, <b>{escape(user_name)}</b>\n"
+        "┊ Kelola bot dan layananmu di satu tempat.\n"
+        "╰────────────────────\n\n"
+        "╭─〔 𝗔𝗖𝗖𝗢𝗨𝗡𝗧 𝗦𝗧𝗔𝗧𝗨𝗦 〕\n"
+        f"│ ◇ 𝗣𝗟𝗔𝗡       ┃ <b>{escape(plan)}</b>\n"
+        f"│ ◌ 𝗔𝗞𝗧𝗜𝗙     ┃ <b>{escape(plan_expiry)}</b>\n"
+        f"│ ● 𝗦𝗧𝗔𝗧𝗨𝗦    ┃ <b>{escape(bot_status)}</b>\n"
+        f"│ $ 𝗦𝗔𝗟𝗗𝗢     ┃ <b>{format_money(balance)}$</b>\n"
+        f"│ ✧ 𝗣𝗢𝗪𝗘𝗥𝗘𝗗   ┃ <b>{owner_text}</b>\n"
+        "╰────────────────────\n\n"
+        "✦ Pilih menu di bawah untuk mulai.\n"
+        "┊ Hosting cepat · stabil · terkontrol"
     )
 
 
