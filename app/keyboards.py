@@ -104,6 +104,7 @@ def bot_actions_keyboard(bot_id: int, is_running: bool, is_owner: bool) -> Inlin
     builder = InlineKeyboardBuilder()
     if is_running:
         builder.button(text="● Stop", callback_data=f"bot:{bot_id}:stop")
+        builder.button(text="↻ Restart", callback_data=f"bot:{bot_id}:restart")
     else:
         builder.button(text="○ Start", callback_data=f"bot:{bot_id}:start")
     builder.button(text="× Delete", callback_data=f"bot:{bot_id}:delete")

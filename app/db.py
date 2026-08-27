@@ -333,9 +333,13 @@ class Database:
             DELETE FROM user_actions;
             DELETE FROM redeem_codes;
             DELETE FROM bots;
+            DELETE FROM owners;
+            DELETE FROM required_chats;
+            DELETE FROM plans;
             """
         )
         await self.conn.commit()
+        await self.seed_defaults()
 
     async def add_required_chat(self, chat_id: str, title: str, invite_link: str, kind: str) -> None:
         await self.conn.execute(

@@ -785,6 +785,10 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
     elif action == "stop":
         await ctx.hosting.stop_bot(bot_id)
         await callback.answer("Bot dihentikan")
+    elif action == "restart":
+        await ctx.hosting.stop_bot(bot_id)
+        await ctx.hosting.start_bot(bot_id, Path(bot_row["source_path"]), Path(bot_row["entry_point"]))
+        await callback.answer("Bot direstart")
     elif action == "delete":
         await ctx.hosting.delete_bot(bot_id)
         await callback.answer("Bot dihapus")
