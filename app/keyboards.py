@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
@@ -26,6 +26,25 @@ def main_keyboard(is_owner: bool) -> InlineKeyboardMarkup:
         builder.button(text="✧ Owner Panel", callback_data="menu:owner")
     builder.adjust(2, 2, 2, 2, 2, 2)
     return builder.as_markup()
+
+
+def reply_main_keyboard(is_owner: bool) -> ReplyKeyboardMarkup:
+    rows = [
+        ["✦ Upload Bot", "◆ My Bots"],
+        ["◇ Buy Plan", "⌁ Referral"],
+        ["$ Saldo", "◎ Profile"],
+        ["▣ Plan", "◇ Redeem"],
+        ["? Help", "» Ping"],
+        ["⌁ Support", "◌ Runtime"],
+    ]
+    if is_owner:
+        rows.append(["✧ Owner Panel"])
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=label) for label in row] for row in rows],
+        resize_keyboard=True,
+        is_persistent=True,
+        input_field_placeholder="Pilih menu...",
+    )
 
 
 def join_keyboard(entries: list[tuple[str, str]]) -> InlineKeyboardMarkup:

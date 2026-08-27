@@ -30,6 +30,7 @@ from .keyboards import (
     join_keyboard,
     main_keyboard,
     owner_keyboard,
+    reply_main_keyboard,
 )
 from .texts import access_message, copy_code, format_money, format_seconds, help_message, loading_message, quote_text, start_message, title
 
@@ -49,6 +50,17 @@ class AppContext:
         if not self.bot_username:
             return "Set BOT_USERNAME di .env"
         return f"https://t.me/{self.bot_username}?start=ref_{user_id}"
+
+
+class ReplyCallback:
+    def __init__(self, message: Message, user, data: str) -> None:
+        self.message = message
+        self.from_user = user
+        self.bot = message.bot
+        self.data = data
+
+    async def answer(self, *args, **kwargs) -> None:
+        return None
 
 
 def is_owner(settings: Settings, user_id: int) -> bool:
@@ -153,7 +165,7 @@ async def safe_send_home(message: Message, ctx: AppContext) -> None:
         ctx.settings.owner_names,
         plan_expiry_text(record),
     )
-    await message.answer(text, reply_markup=main_keyboard(is_owner(ctx.settings, user.id)))
+    await message.answer(text, reply_markup=reply_main_keyboard(is_owner(ctx.settings, user.id)))
 
 
 @router.message(Command("start"))
@@ -717,6 +729,55 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
             is_owner(ctx.settings, callback.from_user.id),
         ),
     )
+
+
+REPLY_MENU_ACTIONS = {
+    "✦ Upload Bot": "menu:upload",
+    "◆ My Bots": "menu:mybots",
+    "◇ Buy Plan": "menu:buyplan",
+    "⌁ Referral": "menu:referral",
+    "$ Saldo": "menu:balance",
+    "◎ Profile": "menu:profile",
+    "▣ Plan": "menu:plan",
+    "◇ Redeem": "menu:redeem",
+    "? Help": "menu:help",
+    "» Ping": "menu:ping",
+    "⌁ Support": "menu:support",
+    "◌ Runtime": "menu:runtime",
+    "✧ Owner Panel": "menu:owner",
+}
+
+
+@router.message(F.text.in_(REPLY_MENU_ACTIONS.keys()))
+async def reply_menu(message: Message, state: FSMContext, ctx: AppContext) -> None:
+    action = REPLY_MENU_ACTIONS[message.text or ""]
+    if action == "menu:owner" and not is_owner(ctx.settings, message.from_user.id):
+        await message.answer("× Akses ditolak.")
+        return
+    placeholder = await message.answer("◌ membuka menu...")
+    callback = ReplyCallback(placeholder, message.from_user, action)
+    handlers = {
+        "menu:upload": menu_upload,
+        "menu:mybots": menu_mybots,
+        "menu:buyplan": menu_buyplan,
+        "menu:referral": menu_referral,
+        "menu:balance": menu_balance,
+        "menu:profile": menu_profile,
+        "menu:plan": menu_plan,
+        "menu:redeem": menu_redeem,
+        "menu:help": menu_help,
+        "menu:ping": menu_ping,
+        "menu:support": menu_support,
+        "menu:runtime": menu_runtime,
+        "menu:owner": menu_owner,
+    }
+    handler = handlers[action]
+    if action in {"menu:upload", "menu:redeem"}:
+        await handler(callback, state)
+    elif action in {"menu:mybots", "menu:referral", "menu:balance", "menu:profile", "menu:plan", "menu:support", "menu:runtime", "menu:owner"}:
+        await handler(callback, ctx)
+    else:
+        await handler(callback)
 
 
 def register_data(ctx: AppContext) -> None:
