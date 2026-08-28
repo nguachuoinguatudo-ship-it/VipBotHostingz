@@ -553,10 +553,10 @@ async def _handle_owner_text(message: Message, action: str, ctx: AppContext) -> 
         await ctx.db.add_balance(int(target), int(amount))
         return f"Saldo user {target} ditambah {amount}$."
     if action == "owner_memory":
-        value = max(128, int(text.strip()))
+        value = max(0, int(text.strip()))
         ctx.hosting.configure(ctx.hosting.auto_restart, value, ctx.hosting.cpu_limit_seconds)
         await ctx.db.set_app_setting("memory_limit_mb", str(value))
-        return f"Memory limit disimpan: {value} MB."
+        return f"Memory limit disimpan: {value or 'tanpa batas'}{'' if value == 0 else ' MB'}."
     if action == "owner_autorestart":
         value = text.strip().lower()
         if value not in {"on", "off", "true", "false", "1", "0"}:

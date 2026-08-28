@@ -29,7 +29,7 @@ async def main() -> None:
     cpu_limit = await db.get_app_setting("cpu_limit_seconds")
     hosting.configure(
         settings.auto_restart if auto_restart is None else auto_restart == "true",
-        settings.memory_limit_mb if memory_limit is None else max(128, int(memory_limit)),
+        settings.memory_limit_mb if memory_limit is None else max(0, int(memory_limit)),
         settings.cpu_limit_seconds if cpu_limit is None else max(0, int(cpu_limit)),
     )
 

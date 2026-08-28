@@ -56,7 +56,7 @@ def get_settings() -> Settings:
     database_path = Path(os.getenv("DATABASE_PATH", "data/bot.db"))
     data_dir = Path(os.getenv("DATA_DIR", "data"))
     auto_restart = os.getenv("AUTO_RESTART", "true").strip().lower() in {"1", "true", "yes", "on"}
-    memory_limit_mb = max(128, int(os.getenv("BOT_MEMORY_LIMIT_MB", "512")))
+    memory_limit_mb = max(0, int(os.getenv("BOT_MEMORY_LIMIT_MB", "512")))
     cpu_limit_seconds = max(0, int(os.getenv("BOT_CPU_LIMIT_SECONDS", "0")))
 
     return Settings(

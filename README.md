@@ -35,6 +35,6 @@ python main.py
 - Pembelian plan menambah kapasitas hosting dan memperpanjang masa aktif 30 hari.
 - Untuk fitur wajib join, isi data lewat panel owner atau edit tabel `required_chats`.
 - `AUTO_RESTART=true` menghidupkan kembali bot saat crash.
-- `BOT_MEMORY_LIMIT_MB=512` membatasi memory proses; minimum aman yang diterima adalah 128 MB.
+- `BOT_MEMORY_LIMIT_MB=512` membatasi memory proses; isi `0` untuk tanpa batas.
 - `BOT_CPU_LIMIT_SECONDS=0` berarti tanpa batas CPU; isi angka positif jika ingin membatasi waktu CPU.
 - Ini adalah panel hosting Python ringan, bukan pengganti isolasi Docker/Pterodactyl penuh untuk kode yang tidak dipercaya.
