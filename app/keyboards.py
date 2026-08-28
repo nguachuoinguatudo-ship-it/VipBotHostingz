@@ -91,6 +91,9 @@ def owner_keyboard() -> InlineKeyboardMarkup:
         ("◌ Lihat Bot", "owner:listbots"),
         ("⌫ Hapus Semua Bot", "owner:stopall"),
         ("⟳ Reset Data", "owner:resetdata"),
+        ("⚙ Memory Limit", "owner:memory"),
+        ("↻ Auto Restart", "owner:autorestart"),
+        ("◴ CPU Limit", "owner:cpu"),
         ("+ Add To Grup", "owner:addgroup"),
         ("⌁ Kelola Join", "owner:joinmanage"),
     ]
@@ -109,6 +112,7 @@ def bot_actions_keyboard(bot_id: int, is_running: bool, is_owner: bool) -> Inlin
         builder.button(text="○ Start", callback_data=f"bot:{bot_id}:start")
     builder.button(text="× Delete", callback_data=f"bot:{bot_id}:delete")
     builder.button(text="≡ Log", callback_data=f"bot:{bot_id}:log")
+    builder.button(text="▶ Set Start File", callback_data=f"bot:{bot_id}:setstart")
     if is_owner:
         builder.button(text="✧ Owner", callback_data="menu:owner")
     builder.button(text="‹ Kembali", callback_data="menu:home")

@@ -517,6 +517,9 @@ async def owner_action(callback: CallbackQuery, state: FSMContext, ctx: AppConte
         "addowner": "Kirim format: user_id|label",
         "addgroup": "Kirim format: chat_id|title|invite_link|kind",
         "joinmanage": "Kirim `list`, `delete:chat_id`, atau `add:chat_id|title|invite_link|kind`.",
+        "memory": "Kirim batas memory dalam MB. Contoh: 512",
+        "autorestart": "Kirim `on` untuk aktif atau `off` untuk nonaktif.",
+        "cpu": "Kirim batas waktu CPU dalam detik. `0` = tanpa batas.",
     }
     if action == "stopall":
         await ctx.hosting.stop_all()
@@ -549,6 +552,24 @@ async def _handle_owner_text(message: Message, action: str, ctx: AppContext) -> 
         target, amount = [part.strip() for part in text.split("|", 1)]
         await ctx.db.add_balance(int(target), int(amount))
         return f"Saldo user {target} ditambah {amount}$."
+    if action == "owner_memory":
+        value = max(128, int(text.strip()))
+        ctx.hosting.configure(ctx.hosting.auto_restart, value, ctx.hosting.cpu_limit_seconds, ctx.hosting.backend, ctx.hosting.docker_image)
+        await ctx.db.set_app_setting("memory_limit_mb", str(value))
+        return f"Memory limit disimpan: {value} MB."
+    if action == "owner_autorestart":
+        value = text.strip().lower()
+        if value not in {"on", "off", "true", "false", "1", "0"}:
+            raise ValueError("gunakan on atau off")
+        enabled = value in {"on", "true", "1"}
+        ctx.hosting.configure(enabled, ctx.hosting.memory_limit_mb, ctx.hosting.cpu_limit_seconds, ctx.hosting.backend, ctx.hosting.docker_image)
+        await ctx.db.set_app_setting("auto_restart", "true" if enabled else "false")
+        return f"Auto restart: {'ON' if enabled else 'OFF'}."
+    if action == "owner_cpu":
+        value = max(0, int(text.strip()))
+        ctx.hosting.configure(ctx.hosting.auto_restart, ctx.hosting.memory_limit_mb, value, ctx.hosting.backend, ctx.hosting.docker_image)
+        await ctx.db.set_app_setting("cpu_limit_seconds", str(value))
+        return f"CPU time limit disimpan: {value or 'tanpa batas'} detik."
     if action == "owner_createredeem":
         parts = [part.strip() for part in text.split("|")]
         if len(parts) == 2:
@@ -734,6 +755,30 @@ async def on_text(message: Message, state: FSMContext, ctx: AppContext) -> None:
         await message.answer("Kirim file, bukan teks.", reply_markup=back_keyboard())
         return
 
+    if action.startswith("setstart:"):
+        bot_id = int(action.split(":", 1)[1])
+        bot_row = await ctx.db.get_bot(bot_id)
+        if bot_row is None or (bot_row["owner_id"] != user.id and not is_owner(ctx.settings, user.id)):
+            await message.answer("Bot tidak ditemukan atau akses ditolak.")
+            await state.clear()
+            return
+        root = Path(bot_row["source_path"]).resolve()
+        candidate = (root / message.text.strip()).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            await message.answer("Path harus berada di dalam folder bot.")
+            await state.clear()
+            return
+        if candidate.suffix.lower() != ".py" or not candidate.is_file():
+            await message.answer("File start harus berupa file Python yang tersedia.")
+            await state.clear()
+            return
+        await ctx.db.update_bot_entrypoint(bot_id, candidate.as_posix())
+        await message.answer(f"▶ Start file bot #{bot_id} diubah ke <code>{candidate.relative_to(root)}</code>.")
+        await state.clear()
+        return
+
     if action.startswith("owner_"):
         if not is_owner(ctx.settings, user.id):
             await message.answer("Akses ditolak.", reply_markup=back_keyboard())
@@ -750,7 +795,7 @@ async def on_text(message: Message, state: FSMContext, ctx: AppContext) -> None:
 
 
 @router.callback_query(F.data.startswith("bot:"))
-async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
+async def bot_callback(callback: CallbackQuery, state: FSMContext, ctx: AppContext) -> None:
     _, bot_id_text, action = callback.data.split(":")
     bot_id = int(bot_id_text)
     bot_row = await ctx.db.get_bot(bot_id)
@@ -790,6 +835,16 @@ async def bot_callback(callback: CallbackQuery, ctx: AppContext) -> None:
                 bot_row["status"] == "running",
                 is_owner(ctx.settings, callback.from_user.id),
             ),
+        )
+        await callback.answer()
+        return
+
+    if action == "setstart":
+        await state.update_data(action=f"setstart:{bot_id}")
+        await callback.message.edit_text(
+            f"▶ <b>SET START FILE BOT #{bot_id}</b>\n\n"
+            "Kirim path file Python relatif dari folder bot.\n"
+            "Contoh: <code>main.py</code> atau <code>src/app.py</code>",
         )
         await callback.answer()
         return

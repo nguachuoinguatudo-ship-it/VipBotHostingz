@@ -24,7 +24,16 @@ async def main() -> None:
 
     hosting = HostingManager(db, settings.data_dir)
     hosting.prepare()
-    hosting.configure(settings.auto_restart, settings.memory_limit_mb, settings.cpu_limit_seconds)
+    auto_restart = await db.get_app_setting("auto_restart")
+    memory_limit = await db.get_app_setting("memory_limit_mb")
+    cpu_limit = await db.get_app_setting("cpu_limit_seconds")
+    hosting.configure(
+        settings.auto_restart if auto_restart is None else auto_restart == "true",
+        settings.memory_limit_mb if memory_limit is None else max(128, int(memory_limit)),
+        settings.cpu_limit_seconds if cpu_limit is None else max(0, int(cpu_limit)),
+        settings.hosting_backend,
+        settings.docker_image,
+    )
 
     bot = Bot(
         settings.bot_token,

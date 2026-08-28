@@ -93,6 +93,11 @@ class Database:
                 max_bots INTEGER NOT NULL,
                 description TEXT NOT NULL DEFAULT ''
             );
+
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             """
         )
         await self.conn.commit()
@@ -319,6 +324,26 @@ class Database:
         await self.conn.execute("DELETE FROM bots WHERE id=?", (bot_id,))
         await self.conn.commit()
 
+    async def update_bot_entrypoint(self, bot_id: int, entry_point: str) -> None:
+        await self.conn.execute(
+            "UPDATE bots SET entry_point=?, updated_at=? WHERE id=?",
+            (entry_point, utc_now(), bot_id),
+        )
+        await self.conn.commit()
+
+    async def get_app_setting(self, key: str) -> str | None:
+        cur = await self.conn.execute("SELECT value FROM app_settings WHERE key=?", (key,))
+        row = await cur.fetchone()
+        return row["value"] if row else None
+
+    async def set_app_setting(self, key: str, value: str) -> None:
+        await self.conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value),
+        )
+        await self.conn.commit()
+
     async def stop_all_bots(self) -> None:
         await self.conn.execute(
             "UPDATE bots SET status='stopped', process_pid=NULL, started_at=NULL, updated_at=?",
@@ -336,6 +361,7 @@ class Database:
             DELETE FROM owners;
             DELETE FROM required_chats;
             DELETE FROM plans;
+            DELETE FROM app_settings;
             """
         )
         await self.conn.commit()
