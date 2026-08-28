@@ -554,7 +554,7 @@ async def _handle_owner_text(message: Message, action: str, ctx: AppContext) -> 
         return f"Saldo user {target} ditambah {amount}$."
     if action == "owner_memory":
         value = max(128, int(text.strip()))
-        ctx.hosting.configure(ctx.hosting.auto_restart, value, ctx.hosting.cpu_limit_seconds, ctx.hosting.backend, ctx.hosting.docker_image)
+        ctx.hosting.configure(ctx.hosting.auto_restart, value, ctx.hosting.cpu_limit_seconds)
         await ctx.db.set_app_setting("memory_limit_mb", str(value))
         return f"Memory limit disimpan: {value} MB."
     if action == "owner_autorestart":
@@ -562,12 +562,12 @@ async def _handle_owner_text(message: Message, action: str, ctx: AppContext) -> 
         if value not in {"on", "off", "true", "false", "1", "0"}:
             raise ValueError("gunakan on atau off")
         enabled = value in {"on", "true", "1"}
-        ctx.hosting.configure(enabled, ctx.hosting.memory_limit_mb, ctx.hosting.cpu_limit_seconds, ctx.hosting.backend, ctx.hosting.docker_image)
+        ctx.hosting.configure(enabled, ctx.hosting.memory_limit_mb, ctx.hosting.cpu_limit_seconds)
         await ctx.db.set_app_setting("auto_restart", "true" if enabled else "false")
         return f"Auto restart: {'ON' if enabled else 'OFF'}."
     if action == "owner_cpu":
         value = max(0, int(text.strip()))
-        ctx.hosting.configure(ctx.hosting.auto_restart, ctx.hosting.memory_limit_mb, value, ctx.hosting.backend, ctx.hosting.docker_image)
+        ctx.hosting.configure(ctx.hosting.auto_restart, ctx.hosting.memory_limit_mb, value)
         await ctx.db.set_app_setting("cpu_limit_seconds", str(value))
         return f"CPU time limit disimpan: {value or 'tanpa batas'} detik."
     if action == "owner_createredeem":

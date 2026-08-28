@@ -7,7 +7,6 @@ import sys
 import zipfile
 import contextlib
 import signal
-import shlex
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -56,8 +55,6 @@ class HostingManager:
         self.auto_restart = True
         self.memory_limit_mb = 512
         self.cpu_limit_seconds = 0
-        self.backend = "local"
-        self.docker_image = "python:3.12-slim"
 
     def prepare(self) -> None:
         self.bots_dir.mkdir(parents=True, exist_ok=True)
@@ -68,14 +65,10 @@ class HostingManager:
         auto_restart: bool,
         memory_limit_mb: int,
         cpu_limit_seconds: int,
-        backend: str = "local",
-        docker_image: str = "python:3.12-slim",
     ) -> None:
         self.auto_restart = auto_restart
         self.memory_limit_mb = memory_limit_mb
         self.cpu_limit_seconds = cpu_limit_seconds
-        self.backend = backend
-        self.docker_image = docker_image
 
     async def restart_running_bots(self) -> None:
         bots = await self.db.list_all_bots()
@@ -93,8 +86,6 @@ class HostingManager:
         source_path = source_path.resolve()
         entry_point = entry_point.resolve()
         workdir = source_path if source_path.is_dir() else source_path.parent
-        if self.backend == "docker":
-            return await self._start_docker(bot_id, workdir, entry_point)
         vendor_dir = workdir / self.vendor_dir_name
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
@@ -144,50 +135,6 @@ class HostingManager:
         asyncio.create_task(self._watch_process(self.processes[bot_id]))
         return True
 
-    async def _start_docker(self, bot_id: int, workdir: Path, entry_point: Path) -> bool:
-        relative_entry = entry_point.relative_to(workdir).as_posix()
-        requirements = workdir / "requirements.txt"
-        if not requirements.exists():
-            nested = sorted(entry_point.parent.rglob("requirements.txt"))
-            requirements = nested[0] if nested else requirements
-        install = ""
-        if requirements.exists():
-            relative_requirements = requirements.relative_to(workdir).as_posix()
-            install = f"python -m pip install --no-cache-dir -r {shlex.quote(relative_requirements)} && "
-        container_name = f"viphosting_bot_{bot_id}"
-        command = [
-            "docker", "run", "--rm", "--name", container_name,
-            "--memory", f"{self.memory_limit_mb}m", "--pids-limit", "128",
-            "-v", f"{workdir.as_posix()}:/app:rw", "-w", "/app",
-            "-e", "PYTHONUNBUFFERED=1", self.docker_image, "sh", "-lc",
-            f"{install}exec python -u {shlex.quote(relative_entry)}",
-        ]
-        if self.cpu_limit_seconds > 0:
-            command[7:7] = ["--cpus", str(max(0.1, self.cpu_limit_seconds / 60))]
-        log_path = workdir / "runtime.log"
-        self._rotate_log(log_path)
-        log_file = log_path.open("ab", buffering=0)
-        try:
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=log_file,
-                stderr=asyncio.subprocess.STDOUT,
-                start_new_session=True,
-            )
-        except Exception:
-            log_file.close()
-            raise
-        self.processes[bot_id] = HostedProcess(bot_id, process, workdir, entry_point, log_file)
-        await self.db.update_bot_status(bot_id, "running", process.pid, utc_now())
-        await asyncio.sleep(1)
-        if process.returncode is not None:
-            self.processes.pop(bot_id, None)
-            log_file.close()
-            await self.db.update_bot_status(bot_id, "stopped")
-            raise RuntimeError(f"Container berhenti saat start:\n{tail_log(log_path)}")
-        asyncio.create_task(self._watch_process(self.processes[bot_id]))
-        return True
-
     async def _watch_process(self, hosted: HostedProcess) -> None:
         return_code = await hosted.process.wait()
         current = self.processes.get(hosted.bot_id)
@@ -218,14 +165,6 @@ class HostingManager:
         hosted = self.processes.pop(bot_id, None)
         if hosted and hosted.process.returncode is None:
             self._stop_requested.add(bot_id)
-            if self.backend == "docker":
-                with contextlib.suppress(Exception):
-                    stop_process = await asyncio.create_subprocess_exec(
-                        "docker", "stop", "-t", "8", f"viphosting_bot_{bot_id}",
-                        stdout=asyncio.subprocess.DEVNULL,
-                        stderr=asyncio.subprocess.DEVNULL,
-                    )
-                    await asyncio.wait_for(stop_process.wait(), timeout=10)
             hosted.process.terminate()
             try:
                 await asyncio.wait_for(hosted.process.wait(), timeout=8)

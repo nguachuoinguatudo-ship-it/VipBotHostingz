@@ -38,5 +38,3 @@ python main.py
 - `BOT_MEMORY_LIMIT_MB=512` membatasi memory proses; minimum aman yang diterima adalah 128 MB.
 - `BOT_CPU_LIMIT_SECONDS=0` berarti tanpa batas CPU; isi angka positif jika ingin membatasi waktu CPU.
 - Ini adalah panel hosting Python ringan, bukan pengganti isolasi Docker/Pterodactyl penuh untuk kode yang tidak dipercaya.
-- Untuk mode container, pasang Docker di VPS lalu ubah `HOSTING_BACKEND=docker`; setiap bot berjalan dalam container terpisah dengan image `DOCKER_IMAGE`.
-- Mode Docker membutuhkan akses user yang menjalankan bot ke Docker daemon dan koneksi internet saat memasang `requirements.txt`.

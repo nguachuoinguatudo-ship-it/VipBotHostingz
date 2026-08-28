@@ -31,8 +31,6 @@ class Settings:
     auto_restart: bool
     memory_limit_mb: int
     cpu_limit_seconds: int
-    hosting_backend: str
-    docker_image: str
 
     @property
     def owner_names(self) -> list[str]:
@@ -60,10 +58,6 @@ def get_settings() -> Settings:
     auto_restart = os.getenv("AUTO_RESTART", "true").strip().lower() in {"1", "true", "yes", "on"}
     memory_limit_mb = max(128, int(os.getenv("BOT_MEMORY_LIMIT_MB", "512")))
     cpu_limit_seconds = max(0, int(os.getenv("BOT_CPU_LIMIT_SECONDS", "0")))
-    hosting_backend = os.getenv("HOSTING_BACKEND", "local").strip().lower()
-    if hosting_backend not in {"local", "docker"}:
-        raise RuntimeError("HOSTING_BACKEND harus local atau docker")
-    docker_image = os.getenv("DOCKER_IMAGE", "python:3.12-slim").strip()
 
     return Settings(
         bot_token=bot_token,
@@ -79,6 +73,4 @@ def get_settings() -> Settings:
         auto_restart=auto_restart,
         memory_limit_mb=memory_limit_mb,
         cpu_limit_seconds=cpu_limit_seconds,
-        hosting_backend=hosting_backend,
-        docker_image=docker_image,
     )

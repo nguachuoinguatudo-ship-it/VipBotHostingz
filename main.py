@@ -31,8 +31,6 @@ async def main() -> None:
         settings.auto_restart if auto_restart is None else auto_restart == "true",
         settings.memory_limit_mb if memory_limit is None else max(128, int(memory_limit)),
         settings.cpu_limit_seconds if cpu_limit is None else max(0, int(cpu_limit)),
-        settings.hosting_backend,
-        settings.docker_image,
     )
 
     bot = Bot(
